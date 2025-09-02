@@ -1,0 +1,27 @@
+{
+  "name": "chrome-spider",
+  "version": "1.0.0",
+  "description": "Chrome extension for domain lookups and page analysis using Spider API",
+  "main": "manifest.json",
+  "scripts": {
+    "build": "echo 'Extension built successfully!'",
+    "package": "zip -r chrome-spider.zip . -x '*.git*' 'node_modules/*' '*.md' 'package.json' 'package-lock.json'",
+    "clean": "rm -f chrome-spider.zip"
+  },
+  "keywords": [
+    "chrome-extension",
+    "spider",
+    "domain-lookup",
+    "web-crawling",
+    "seo-analysis"
+  ],
+  "author": "Spider Extension Developer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/chrome-spider.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

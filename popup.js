@@ -39,10 +39,33 @@ class SpiderPopup {
         document.getElementById('currentUrl').textContent = this.currentUrl;
     }
 
-    showStatus(message, type = 'loading') {
+    showStatus(message, type = 'loading', actions = []) {
         const statusEl = document.getElementById('status');
-        statusEl.textContent = message;
         statusEl.className = `status ${type}`;
+        statusEl.innerHTML = '';
+
+        const textDiv = document.createElement('div');
+        textDiv.textContent = message;
+        statusEl.appendChild(textDiv);
+
+        if (actions && actions.length) {
+            const actionsWrap = document.createElement('div');
+            actionsWrap.style.marginTop = '8px';
+
+            actions.forEach(a => {
+                if (!a || !a.label || !a.url) return;
+                const btn = document.createElement('a');
+                btn.textContent = a.label;
+                btn.href = a.url;
+                btn.target = '_blank';
+                btn.rel = 'noopener noreferrer';
+                btn.style.cssText = 'display:inline-block;margin:4px;padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.2);color:#fff;text-decoration:none;';
+                actionsWrap.appendChild(btn);
+            });
+
+            statusEl.appendChild(actionsWrap);
+        }
+
         statusEl.style.display = 'block';
     }
 
@@ -75,6 +98,27 @@ class SpiderPopup {
         document.getElementById('results').style.display = 'none';
     }
 
+    // Render actionable error messages based on new API contract
+    renderActionableError(resp) {
+        const details = (resp && resp.errorDetails) || {};
+        const code = details.code;
+        const nestId = details.nestId;
+        const statusUrl = details.statusUrl;
+        const reportUrl = details.reportUrl;
+        const userMessage = details.userMessage || resp.error || 'An error occurred';
+
+        const actions = [];
+        if (statusUrl) actions.push({ label: 'View crawl status', url: statusUrl });
+        if (reportUrl) actions.push({ label: 'View report', url: reportUrl });
+
+        if (code === 'HOMEPAGE_EVALUATION_REQUIRED') {
+            const msg = `${userMessage}${nestId ? ' (Seeding homepage...)' : ''}`;
+            this.showStatus(msg, 'error', actions);
+        } else {
+            this.showStatus(`❌ ${userMessage}`, 'error', actions);
+        }
+    }
+
     async performDomainLookup() {
         if (!this.currentDomain) {
             this.showStatus('No domain available', 'error');
@@ -94,7 +138,11 @@ class SpiderPopup {
                 this.showStatus('✅ Domain lookup successful!', 'success');
                 this.showResults(response.data);
             } else {
-                this.showStatus(`❌ ${response.error}`, 'error');
+                if (response.errorDetails) {
+                    this.renderActionableError(response);
+                } else {
+                    this.showStatus(`❌ ${response.error}`, 'error');
+                }
             }
         } catch (error) {
             this.showStatus(`❌ Error: ${error.message}`, 'error');
@@ -126,7 +174,11 @@ class SpiderPopup {
                 this.showStatus('✅ Page load successful!', 'success');
                 this.showResults(response.data);
             } else {
-                this.showStatus(`❌ ${response.error}`, 'error');
+                if (response.errorDetails) {
+                    this.renderActionableError(response);
+                } else {
+                    this.showStatus(`❌ ${response.error}`, 'error');
+                }
             }
         } catch (error) {
             this.showStatus(`❌ Error: ${error.message}`, 'error');

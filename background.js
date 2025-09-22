@@ -57,7 +57,38 @@ class SpiderBackground {
                         }
                     };
                 }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                // Enhanced error handling per API contract (headers first, fallback to JSON body)
+                let body = null;
+                try {
+                    body = await response.clone().json();
+                } catch (e) {
+                    // ignore JSON parse failures
+                }
+
+                const headerMsg = response.headers.get('X-User-Message');
+                const code = response.headers.get('X-Error-Code');
+                const nestId = response.headers.get('X-Nest-Id');
+                const statusUrl = response.headers.get('X-Status-Url');
+                const reportUrl = response.headers.get('X-Report-Url');
+
+                const userMessage =
+                    headerMsg ||
+                    (body && (body.user_message || body.message || (body.detail && body.detail.user_message) || (body.detail && body.detail.message))) ||
+                    `HTTP ${response.status}`;
+
+                return {
+                    success: false,
+                    error: userMessage,
+                    errorDetails: {
+                        code,
+                        userMessage,
+                        nestId,
+                        statusUrl,
+                        reportUrl,
+                        httpStatus: response.status,
+                        body
+                    }
+                };
             }
 
             const data = await response.json();
@@ -89,17 +120,59 @@ class SpiderBackground {
                 dom: domContent.html
             };
 
+            // Compute and log payload size before sending
+            const body = JSON.stringify(loadPayload);
+            try {
+                const bytes = new TextEncoder().encode(body).length;
+                const mb = bytes / (1024 * 1024);
+                console.log(`Spider: sending payload size: ${mb.toFixed(1)}MB (${bytes.toLocaleString()} bytes)`);
+            } catch (e) {
+                // Fallback in case TextEncoder is unavailable
+                console.log(`Spider: sending payload (size unknown): ${body.length} chars`);
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/spider/load`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(loadPayload)
+                body
             });
 
             if (response.status !== 201) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                // Enhanced error handling per API contract (headers first, fallback to JSON body)
+                let jsonBody = null;
+                try {
+                    jsonBody = await response.clone().json();
+                } catch (e) {
+                    // ignore JSON parse failures
+                }
+
+                const headerMsg = response.headers.get('X-User-Message');
+                const code = response.headers.get('X-Error-Code');
+                const nestId = response.headers.get('X-Nest-Id');
+                const statusUrl = response.headers.get('X-Status-Url');
+                const reportUrl = response.headers.get('X-Report-Url');
+
+                const userMessage =
+                    headerMsg ||
+                    (jsonBody && (jsonBody.user_message || jsonBody.message || (jsonBody.detail && jsonBody.detail.user_message) || (jsonBody.detail && jsonBody.detail.message))) ||
+                    `HTTP ${response.status}: ${response.statusText}`;
+
+                return {
+                    success: false,
+                    error: userMessage,
+                    errorDetails: {
+                        code,
+                        userMessage,
+                        nestId,
+                        statusUrl,
+                        reportUrl,
+                        httpStatus: response.status,
+                        body: jsonBody
+                    }
+                };
             }
 
             const data = await response.json();

@@ -215,3 +215,96 @@ To update the extension:
 
 **Built with ❤️ for web analysis and domain research**
 
+
+## 🔐 Auth Bridge (MV3) with NextAuth v5 Backend
+
+This extension now integrates an authentication handshake with your Next.js backend (NextAuth v5). If the user is already logged in on the website, the extension will mint an extension-scoped JWT via the backend and refresh it automatically. A popup UI shows logged-in status, with options to sign in, refresh, verify, and sign out.
+
+### Backend assumptions
+- Routes exist in your Next.js app:
+  - Auth/mint token: [`route.ts`](src/app/api/extension/auth/route.ts)
+  - Verify token: [`route.ts`](src/app/api/extension/verify/route.ts)
+  - Me via bearer/session: [`route.ts`](src/app/api/extension/me/route.ts)
+  - NextAuth cookie config enabling SameSite=None: [`config.ts`](src/server/auth/config.ts)
+  - NextAuth server export (session lookup): [`index.ts`](src/server/auth/index.ts)
+- Env variables used by backend (see [`env.js`](src/env.js)):
+  - EXTENSION_ALLOWED_ORIGINS
+  - EXTENSION_JWT_SECRET
+  - EXTENSION_JWT_TTL_SECONDS
+
+### Files added/updated in this extension
+- Runtime config: [`env.js`](env.js)
+- API client: [`api.js`](api.js)
+- Background auth lifecycle and messaging: [`background.js`](background.js)
+- Popup UI additions for auth: [`popup.html`](popup.html), [`popup.js`](popup.js)
+- Manifest permissions for refresh scheduling: [`manifest.json`](manifest.json)
+
+### Configuration
+- Base URL is set to your app domain in [`env.js`](env.js): `APP_BASE_URL = https://spider.neissetrak.ovh`
+- Auth paths in [`env.js`](env.js):
+  - AUTH_STATUS_MINT: `/api/extension/auth`
+  - VERIFY: `/api/extension/verify`
+  - ME: `/api/extension/me`
+  - SIGNIN_UI: `/api/auth/signin`
+  - SIGNOUT_UI: `/api/auth/signout`
+- Manifest permissions (added):
+  - "alarms" for token refresh scheduling
+  - Host permissions already include `https://spider.neissetrak.ovh/*`
+
+### How it works
+- On install/startup:
+  - Background service worker calls GET `/api/extension/auth` with `credentials: 'include'`.
+  - If authenticated, stores `{ token, user, expiresAt }` in `chrome.storage.local` and schedules a refresh alarm for 60 seconds before expiry.
+  - If not authenticated, state is cleared and a backoff timer is scheduled (exponential up to 15 minutes).
+- Token refresh:
+  - When the "refresh-token" alarm fires, the background tries again to mint a token via the same GET `/api/extension/auth` credentials flow.
+- Verify token (dev):
+  - Popup "Verify" triggers POST `/api/extension/verify { token }`.
+- Me endpoint (available in API client for future use):
+  - GET `/api/extension/me` using Bearer, or with credentials include.
+
+### Storage schema (chrome.storage.local)
+- `token: string`
+- `expiresAt: ISO string`
+- `user: { id, name, email, image? }`
+- `lastVerifiedAt?: ISO string`
+
+### Popup ↔ Background messaging
+- `auth:getState` → returns current auth state
+- `auth:login` → opens NextAuth sign-in UI and polls `/api/extension/auth` for up to 60s
+- `auth:refresh` → immediate auth attempt via `/api/extension/auth`
+- `auth:verify` → verifies the current token via `/api/extension/verify`
+- `auth:logout` → clears local token, opens NextAuth sign-out page
+
+Background broadcasts updates with `type: 'auth:updated'`, which the popup listens to and updates the UI.
+
+### Acceptance criteria checklist
+- First run:
+  - When logged in on site: background mints token and popup shows "Signed in as email".
+  - When logged out: popup shows "Sign in"; after sign-in on the site, the extension detects auth during polling and stores the token automatically.
+- Steady state:
+  - Refresh scheduled before expiry; token updated without user action.
+  - Verify shows valid for non-expired token.
+- Error state:
+  - If backend returns `{ authenticated: false }`, token is cleared and popup shows "Not signed in".
+  - Network/CORS errors appear in popup status area and are retried later via backoff.
+
+### Testing
+1. Backend configuration:
+   - Ensure `EXTENSION_ALLOWED_ORIGINS` includes `chrome-extension://&lt;your-extension-id&gt;`
+   - NextAuth cookies must be `SameSite=None; Secure` (see [`config.ts`](src/server/auth/config.ts))
+2. Extension configuration:
+   - Set `APP_BASE_URL` in [`env.js`](env.js) (already set to `https://spider.neissetrak.ovh`)
+3. Load unpacked:
+   - Open `chrome://extensions`, enable Developer Mode, load this folder.
+4. Verify flows:
+   - Logged out on site → popup shows "Sign in"
+   - After logging in on site → popup auto-updates during polling or via "Refresh"
+   - Token auto-refreshes before expiry (check extension logs: chrome://extensions → "service worker" console)
+   - "Verify" validates the token via `/api/extension/verify`
+   - `/api/extension/me` (Bearer) is available in [`api.js`](api.js)
+
+### Notes
+- No external libraries were added.
+- Background uses `importScripts('env.js', 'api.js')` to load shared modules.
+- Service worker uses only MV3-compatible APIs (`storage`, `alarms`, `tabs`, `runtime` messaging).

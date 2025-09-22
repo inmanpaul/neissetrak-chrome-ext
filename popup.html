@@ -112,6 +112,16 @@
             background: #1976D2;
             transform: translateY(-1px);
         }
+
+        .btn-danger {
+            background: #e53935;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c62828;
+            transform: translateY(-1px);
+        }
         
         .btn:disabled {
             background: #ccc;
@@ -172,10 +182,61 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Auth UI */
+        .auth-section {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .auth-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .auth-status {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .countdown {
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        .auth-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .auth-buttons button {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="auth-section" id="authSection">
+            <div class="auth-row">
+                <div class="auth-status" id="authStatus">Checking authentication…</div>
+                <div class="countdown" id="expiryCountdown" style="display:none;"></div>
+            </div>
+            <div class="auth-buttons">
+                <button id="authSignInBtn" class="btn-secondary">Sign in</button>
+                <button id="authRefreshBtn" class="btn-primary">Refresh</button>
+                <button id="authVerifyBtn" class="btn-secondary">Verify</button>
+                <button id="authSignOutBtn" class="btn-danger">Sign out</button>
+            </div>
+            <div id="authError" class="status error" style="display:none;"></div>
+        </div>
+
         <h1>🕷Neissetrak  ️ Lookup</h1>
         
         <div class="current-domain">

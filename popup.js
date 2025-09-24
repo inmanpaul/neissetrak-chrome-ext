@@ -35,8 +35,46 @@ class SpiderPopup {
     }
 
     updateCurrentDomainDisplay() {
-        document.getElementById('currentDomain').textContent = this.currentDomain;
-        document.getElementById('currentUrl').textContent = this.currentUrl;
+        const domainEl = document.getElementById('currentDomain');
+        const urlEl = document.getElementById('currentUrl');
+        domainEl.textContent = this.currentDomain;
+
+        // Render truncated URL and indicate when it is trimmed, including total length
+        const MAX = 124;
+        const truncated = this.truncateMiddle(this.currentUrl, MAX);
+
+        // Clear any previous content and rebuild to avoid HTML injection
+        urlEl.textContent = '';
+        const main = document.createElement('span');
+        main.textContent = truncated;
+        urlEl.appendChild(main);
+
+        if (this.currentUrl && this.currentUrl.length > MAX) {
+            const meta = document.createElement('span');
+            meta.className = 'url-meta';
+            meta.textContent = ` (trimmed, ${this.currentUrl.length} chars)`;
+            urlEl.appendChild(meta);
+        }
+
+        // Keep full URL on hover
+        urlEl.title = this.currentUrl;
+    }
+
+    // Truncate a long string to max characters using a middle ellipsis.
+    // Keeps protocol if present and favors the start 60% and end 40%.
+    truncateMiddle(str, max = 124) {
+        if (!str || str.length <= max) return str || '';
+        const protocolMatch = str.match(/^[a-zA-Z]+:\/\//);
+        const protocol = protocolMatch ? protocolMatch[0] : '';
+        const rest = protocol ? str.slice(protocol.length) : str;
+
+        const keep = max - protocol.length;
+        if (rest.length <= keep) return str;
+
+        const headLen = Math.max(1, Math.ceil((keep - 1) * 0.6));
+        const tailLen = Math.max(1, Math.floor((keep - 1) * 0.4));
+
+        return protocol + rest.slice(0, headLen) + '…' + rest.slice(-tailLen);
     }
 
     showStatus(message, type = 'loading', actions = []) {
@@ -155,7 +193,8 @@ class SpiderPopup {
             return;
         }
 
-        const pageType = document.getElementById('pageType').value;
+        const pageTypeEl = document.querySelector('input[name="pageType"]:checked');
+        const pageType = pageTypeEl ? pageTypeEl.value : (document.getElementById('pageType') ? document.getElementById('pageType').value : 'homepage');
         this.showStatus('🕷️ Loading page...', 'loading');
         this.hideResults();
 

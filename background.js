@@ -1,7 +1,8 @@
 // Spider Domain Lookup Chrome Extension - Background Service Worker
 class SpiderBackground {
     constructor() {
-        this.apiBaseUrl = 'https://spider.neissetrak.ovh';
+        //this.apiBaseUrl = 'https://spider.neissetrak.ovh';
+        this.apiBaseUrl = 'http://localhost:8000';
         this.setupMessageListener();
     }
 

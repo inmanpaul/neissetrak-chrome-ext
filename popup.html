@@ -70,6 +70,43 @@
             font-size: 14px;
             box-sizing: border-box;
         }
+
+        /* Single-click radio selector styles */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+        }
+
+        .radio-option:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        input[type="radio"] {
+            width: auto;
+            padding: 0;
+            background: transparent;
+            accent-color: #4CAF50;
+        }
+
+        input[type="radio"]:focus {
+            box-shadow: none;
+        }
+
+        .radio-option:focus-within {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
+        }
         
         select:focus, input:focus {
             outline: none;
@@ -184,12 +221,21 @@
         </div>
         
         <div class="form-group">
-            <label for="pageType">Page Type:</label>
-            <select id="pageType">
-                <option value="homepage">Homepage</option>
-                <option value="product_listing">Product Listing (PLP)</option>
-                <option value="product_page">Product Page (PDP)</option>
-            </select>
+            <label>Page Type:</label>
+            <div class="radio-group" id="pageTypeGroup">
+                <label class="radio-option">
+                    <input type="radio" name="pageType" value="homepage" checked>
+                    Homepage
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="pageType" value="product_listing">
+                    Product Listing (PLP)
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="pageType" value="product_page">
+                    Product Page (PDP)
+                </label>
+            </div>
         </div>
         
         <div class="button-group">
